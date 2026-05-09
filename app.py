@@ -5,57 +5,113 @@ import plotly.express as px
 from pytrends.request import TrendReq
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 import warnings
-from datetime import datetime, timedelta
+from datetime import datetime
 
-# Warnungen unterdrücken
+# Warnungen unterdrücken, damit das Dashboard sauber bleibt
 warnings.filterwarnings("ignore")
 
 # ===== 1. SEITENKONFIGURATION =====
-st.set_page_config(page_title="Professor Layton Analytics", page_icon="🎩", layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(
+    page_title="Professor Layton Analytics", 
+    page_icon="🎩", 
+    layout="wide", 
+    initial_sidebar_state="expanded"
+)
 
 # ===== 2. LAYTON CSS STYLES =====
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Merriweather:wght@300;400;700&display=swap');
 
-.stApp { background: linear-gradient(135deg, #F5E6D3 0%, #E8DCC4 100%); background-attachment: fixed; }
-h1, h2, h3 { font-family: 'Cinzel', serif !important; color: #1A0F00 !important; font-weight: 700 !important; text-shadow: none !important; }
-p, div, span, li { font-family: 'Merriweather', serif; color: #1A0F00; line-height: 1.6; }
+/* Hintergrund wie altes Pergament */
+.stApp { 
+    background: linear-gradient(135deg, #F5E6D3 0%, #E8DCC4 100%); 
+    background-attachment: fixed; 
+}
 
-/* Eingabefelder Fix */
+/* Überschriften */
+h1, h2, h3 { 
+    font-family: 'Cinzel', serif !important; 
+    color: #1A0F00 !important; 
+    font-weight: 700 !important; 
+    text-shadow: none !important; 
+}
+
+/* Fließtext */
+p, div, span, li { 
+    font-family: 'Merriweather', serif; 
+    color: #1A0F00; 
+    line-height: 1.6; 
+}
+
+/* Eingabefelder Fix (Hoher Kontrast) */
 div[data-baseweb="input"] > div, div[data-baseweb="select"] > div {
-    background-color: #FFF8F0 !important; border: 2px solid #D4AF37 !important; border-radius: 6px !important;
+    background-color: #FFF8F0 !important; 
+    border: 2px solid #D4AF37 !important; 
+    border-radius: 6px !important;
 }
 div[data-baseweb="input"] input, div[data-baseweb="select"] span {
-    color: #1A0F00 !important; font-weight: 900 !important; -webkit-text-fill-color: #1A0F00 !important;
+    color: #1A0F00 !important; 
+    font-weight: 900 !important; 
+    -webkit-text-fill-color: #1A0F00 !important;
 }
 
-/* Karten & Buttons */
+/* Karten & Puzzle-Boxen */
 .stMetric, div[data-testid="stMetric"] {
-    background: linear-gradient(145deg, #FFF8F0, #F0E6D6) !important; border: 2px solid #8B4513 !important;
-    border-radius: 12px !important; box-shadow: 3px 3px 10px rgba(139, 69, 19, 0.2) !important; padding: 20px !important;
+    background: linear-gradient(145deg, #FFF8F0, #F0E6D6) !important; 
+    border: 2px solid #8B4513 !important;
+    border-radius: 12px !important; 
+    box-shadow: 3px 3px 10px rgba(139, 69, 19, 0.2) !important; 
+    padding: 20px !important;
 }
+
+/* Buttons wie Layton's Hut */
 .stButton > button {
-    background: linear-gradient(145deg, #8B4513, #A0522D) !important; color: #F5E6D3 !important; font-family: 'Cinzel', serif !important;
-    border: 2px solid #D4AF37 !important; border-radius: 8px !important; transition: all 0.3s ease !important;
+    background: linear-gradient(145deg, #8B4513, #A0522D) !important; 
+    color: #F5E6D3 !important; 
+    font-family: 'Cinzel', serif !important;
+    border: 2px solid #D4AF37 !important; 
+    border-radius: 8px !important; 
+    transition: all 0.3s ease !important;
 }
-.stButton > button:hover { transform: translateY(-2px) !important; background: linear-gradient(145deg, #A0522D, #8B4513) !important; }
+.stButton > button:hover { 
+    transform: translateY(-2px) !important; 
+    background: linear-gradient(145deg, #A0522D, #8B4513) !important; 
+}
 
-/* Sidebar */
-section[data-testid="stSidebar"] { background: linear-gradient(180deg, #2C1810 0%, #3E2723 100%) !important; border-right: 3px solid #D4AF37 !important; }
-section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] label { color: #FFFFFF !important; font-family: 'Merriweather', serif !important; }
+/* Sidebar wie ein altes Buch */
+section[data-testid="stSidebar"] { 
+    background: linear-gradient(180deg, #2C1810 0%, #3E2723 100%) !important; 
+    border-right: 3px solid #D4AF37 !important; 
+}
+section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] label { 
+    color: #FFFFFF !important; 
+    font-family: 'Merriweather', serif !important; 
+}
 
-/* Tabs */
+/* Tabs wie Kapitel */
 .stTabs [data-baseweb="tab-list"] { gap: 8px; background: transparent !important; }
-.stTabs [data-baseweb="tab"] { background: linear-gradient(145deg, #D4AF37, #B8860B) !important; color: #1A0F00 !important; font-weight: bold !important; font-family: 'Cinzel', serif !important; border-radius: 8px 8px 0 0 !important; border: 2px solid #8B4513 !important; border-bottom: none !important; }
-.stTabs [aria-selected="true"] { background: linear-gradient(145deg, #F5E6D3, #E8DCC4) !important; border-bottom: 2px solid #F5E6D3 !important; }
+.stTabs [data-baseweb="tab"] { 
+    background: linear-gradient(145deg, #D4AF37, #B8860B) !important; 
+    color: #1A0F00 !important; 
+    font-weight: bold !important; 
+    font-family: 'Cinzel', serif !important; 
+    border-radius: 8px 8px 0 0 !important; 
+    border: 2px solid #8B4513 !important; 
+    border-bottom: none !important; 
+}
+.stTabs [aria-selected="true"] { 
+    background: linear-gradient(145deg, #F5E6D3, #E8DCC4) !important; 
+    border-bottom: 2px solid #F5E6D3 !important; 
+}
 </style>
 """, unsafe_allow_html=True)
 
 # ===== 3. LAYTON UI KOMPONENTEN =====
 def layton_header(title, subtitle=""):
     col1, col2 = st.columns([1, 4])
-    with col1: st.markdown("<h1 style='font-size: 4em; text-align: center; margin: 0;'>🎩</h1>", unsafe_allow_html=True)
+    with col1: 
+        st.markdown("<h1 style='font-size: 4em; text-align: center; margin: 0;'>🎩</h1>", unsafe_allow_html=True)
     with col2:
         st.markdown(f"""
         <div style="background: linear-gradient(145deg, #8B4513, #A0522D); padding: 20px; border-radius: 12px; border: 3px solid #D4AF37; box-shadow: 4px 4px 15px rgba(0,0,0,0.3); margin-bottom: 20px;">
@@ -92,19 +148,15 @@ def fetch_trends_robust(keywords, time_range):
     except Exception:
         pass
     
-    # Versuch 2: Notfall-Simulation (Wenn Google blockiert)
-    # Kugelsichere Version: Wir zwingen alle Arrays auf exakt die gleiche Länge
+    # Versuch 2: Notfall-Simulation (Wenn Google blockiert - kugelsicher)
     n_periods = 52
-    # 'W-SUN' ist der modernere Standard für wöchentliche Daten (Sonntag)
     dates = pd.date_range(end=datetime.today(), periods=n_periods, freq='W-SUN')
     df_sim = pd.DataFrame(index=dates)
     
     for kw in keywords:
         base_trend = np.linspace(30, 60, n_periods) + np.random.normal(0, 5, n_periods)
         seasonality = np.sin(np.linspace(0, 4 * np.pi, n_periods)) * 15
-        
-        # .tolist() entfernt alle NumPy-Formatierungen und zwingt Pandas, 
-        # die Werte einfach der Reihe nach einzufügen.
+        # .tolist() verhindert Längen-Probleme zwischen numpy und pandas
         df_sim[kw] = np.clip(base_trend + seasonality, 0, 100).tolist()
         
     return df_sim, "Simuliert"
@@ -131,17 +183,22 @@ if st.sidebar.button("🧩 Ermittlung beginnen"):
         target_kw = kw_list[0]
         
         if target_kw in df.columns:
-            # Daten glätten und vorhersagen
-# Wir stellen zusätzlich sicher, dass das Datum korrekt als Zeitachse erkannt wird
-df.index = pd.to_datetime(df.index)
-y = df[target_kw].resample('W').mean().ffill()            model = ExponentialSmoothing(y, trend='add', seasonal='add', seasonal_periods=4).fit()
+            
+            # --- DER FIX FÜR DEN TYPE ERROR ---
+            # Index als Datetime erzwingen und die moderne Pandas-Syntax (.ffill()) verwenden
+            df.index = pd.to_datetime(df.index)
+            y = df[target_kw].resample('W').mean().ffill()
+            
+            # KI-Modell trainieren und vorhersagen
+            model = ExponentialSmoothing(y, trend='add', seasonal='add', seasonal_periods=4).fit()
             forecast = model.forecast(4) 
             
-            # Metriken
+            # Metriken berechnen
             current_val = y.iloc[-1]
             future_val = forecast.iloc[-1]
             growth_percent = ((future_val - current_val) / current_val) * 100 if current_val > 0 else 0
             
+            # 1. Metriken anzeigen
             st.markdown("### 🧩 Akten-Übersicht")
             col1, col2, col3 = st.columns(3)
             with col1: puzzle_metric("Haupt-Hinweis", target_kw, icon="🔍")
@@ -151,7 +208,7 @@ y = df[target_kw].resample('W').mean().ffill()            model = ExponentialSmo
             st.markdown("---")
             st.markdown("### 📜 Die tiefe Analyse des Rätsels")
             
-            # Drei Tabs für noch mehr Analyse
+            # 2. Drei Tabs für noch mehr Analyse
             tab1, tab2, tab3 = st.tabs(["Spurensuche (Historie)", "Vorhersage", "Tiefe Analyse (Trend vs. Hype)"])
             
             with tab1:
@@ -172,6 +229,7 @@ y = df[target_kw].resample('W').mean().ffill()            model = ExponentialSmo
             with tab3:
                 st.markdown(f"**Ist '{target_kw}' ein langfristiger Trend oder nur ein kurzer Hype?**")
                 st.markdown("Hier trennen wir das 'Grundinteresse' vom kurzfristigen Rauschen.")
+                
                 # Einfache Trend-Zerlegung (Gleitender Durchschnitt)
                 trend_line = y.rolling(window=4, center=True).mean()
                 noise = y - trend_line
@@ -183,5 +241,6 @@ y = df[target_kw].resample('W').mean().ffill()            model = ExponentialSmo
                 
                 st.info("💡 **Tipp des Professors:** Wenn die Linie 'Langfristiger Trend' steigt, solltest du das Thema fest in deine Content-Strategie aufnehmen. Schlägt nur der 'Hype' aus, mach schnell ein Reel dazu und widme dich dann wieder anderen Dingen.")
 
+# Footer
 st.sidebar.markdown("---")
 st.sidebar.caption("🔧 Apparatur gewartet von Luke Triton (Tech-Support)")
