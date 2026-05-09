@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+from statsmodels.tsa.holtwinters import ExponentialSmoothing
 from pytrends.request import TrendReq
 
 # 1. Seiten-Konfiguration (Muss ganz oben stehen!)
