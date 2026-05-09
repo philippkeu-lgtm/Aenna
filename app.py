@@ -17,7 +17,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ===== 2. LAYTON CSS STYLES =====
+# ===== 2. LAYTON CSS STYLES (Hoher Kontrast) =====
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Merriweather:wght@300;400;700&display=swap');
@@ -28,11 +28,19 @@ st.markdown("""
     background-attachment: fixed;
 }
 
-/* Überschriften im Layton-Stil */
+/* Überschriften im Layton-Stil - Hoher Kontrast, kein unscharfer Schatten */
 h1, h2, h3 {
     font-family: 'Cinzel', serif !important;
-    color: #3E2723 !important;
-    text-shadow: 1px 1px 2px rgba(139, 69, 19, 0.2);
+    color: #1A0F00 !important; 
+    font-weight: 700 !important;
+    text-shadow: none !important; 
+}
+
+/* Fließtext allgemein */
+p, div, span, li {
+    font-family: 'Merriweather', serif;
+    color: #1A0F00;
+    line-height: 1.6;
 }
 
 /* Karten/Container wie Puzzle-Boxen */
@@ -67,9 +75,11 @@ section[data-testid="stSidebar"] {
     border-right: 3px solid #D4AF37 !important;
 }
 
+/* Sidebar Text - Weiß für perfekten Kontrast */
 section[data-testid="stSidebar"] * {
-    color: #F5E6D3 !important;
+    color: #FFFFFF !important; 
     font-family: 'Merriweather', serif !important;
+    text-shadow: none !important;
 }
 
 /* Tabs wie Kapitel */
@@ -80,7 +90,8 @@ section[data-testid="stSidebar"] * {
 
 .stTabs [data-baseweb="tab"] {
     background: linear-gradient(145deg, #D4AF37, #B8860B) !important;
-    color: #3E2723 !important;
+    color: #1A0F00 !important;
+    font-weight: bold !important;
     font-family: 'Cinzel', serif !important;
     border-radius: 8px 8px 0 0 !important;
     border: 2px solid #8B4513 !important;
@@ -119,7 +130,7 @@ def puzzle_metric(label, value, delta=None, icon="🧩"):
     if delta is not None:
         color = "#4CAF50" if delta >= 0 else "#F44336"
         arrow = "▲" if delta >= 0 else "▼"
-        delta_html = f'<p style="color: {color}; font-size: 0.9em; margin: 5px 0 0 0;">{arrow} {abs(delta):.1f}%</p>'
+        delta_html = f'<p style="color: {color}; font-size: 0.9em; font-weight: bold; margin: 5px 0 0 0;">{arrow} {abs(delta):.1f}%</p>'
     
     st.markdown(f"""
     <div style="
@@ -128,8 +139,8 @@ def puzzle_metric(label, value, delta=None, icon="🧩"):
         box-shadow: 3px 3px 10px rgba(139, 69, 19, 0.2); margin-bottom: 15px;
     ">
         <div style="font-size: 2em; margin-bottom: 10px;">{icon}</div>
-        <p style="color: #8B4513; font-family: 'Cinzel', serif; font-size: 0.9em; margin: 0; text-transform: uppercase;">{label}</p>
-        <h2 style="color: #3E2723 !important; font-family: 'Cinzel', serif; margin: 10px 0; font-size: 2.2em;">{value}</h2>
+        <p style="color: #5D4037; font-weight: bold; font-family: 'Cinzel', serif; font-size: 0.9em; margin: 0; text-transform: uppercase;">{label}</p>
+        <h2 style="color: #1A0F00 !important; font-family: 'Cinzel', serif; margin: 10px 0; font-size: 2.2em;">{value}</h2>
         {delta_html}
     </div>
     """, unsafe_allow_html=True)
@@ -139,7 +150,7 @@ def mystery_expander(title, content):
         st.markdown(f"""
         <div style="
             background: #FFF8F0; border-left: 4px solid #D4AF37; padding: 15px;
-            margin: 10px 0; font-family: 'Merriweather', serif; color: #3E2723;
+            margin: 10px 0; font-family: 'Merriweather', serif; color: #1A0F00;
         ">
             {content}
         </div>
@@ -158,30 +169,33 @@ def puzzle_alert(message, type="success"):
         background: {bg_color}; border: 2px solid {border_color}; border-radius: 8px;
         padding: 15px; margin: 10px 0; font-family: 'Merriweather', serif; display: flex; align-items: center; gap: 10px;
     ">
-        <span style="font-size: 1.5em;">{icon}</span><span style="color: #3E2723;">{message}</span>
+        <span style="font-size: 1.5em;">{icon}</span><span style="color: #1A0F00; font-weight: bold;">{message}</span>
     </div>
     """, unsafe_allow_html=True)
 
-# ===== 4. DIE HAUPTANWENDUNG (DETEKTEI-LOGIK) =====
+# ===== 4. DATENABFRAGE MIT CACHE (Schutz vor Fehler 429) =====
+@st.cache_data(ttl=3600, show_spinner=False)
+def fetch_google_trends_data(keywords, time_range):
+    pytrends = TrendReq(hl='de-DE', tz=360)
+    pytrends.build_payload(keywords, cat=0, timeframe=time_range, geo='DE')
+    return pytrends.interest_over_time()
 
-# Header aufrufen
+
+# ===== 5. DIE HAUPTANWENDUNG (DETEKTEI-LOGIK) =====
+
 layton_header("Die Detektei für digitale Rätsel", "Ein wahrer Gentleman lässt kein Rätsel ungelöst. ☕")
 
-# Sidebar Setup
 st.sidebar.header("🔍 Die Ermittlungsakte")
 st.sidebar.markdown("Welche Hinweise sollen wir heute untersuchen?")
 keywords = st.sidebar.text_input("Hinweise (mit Komma trennen)", "Momlife, Familienalltag, Basteln")
 kw_list = [x.strip() for x in keywords.split(",")]
 timeframe = st.sidebar.selectbox("Zeitraum der Untersuchung", ["today 3-m", "today 12-m", "today 5-y"], index=1)
 
-# Button klick
 if st.sidebar.button("🧩 Ermittlung beginnen"):
     with st.spinner('Wir kochen eine Kanne Tee und werten die Hinweise aus... ☕'):
         try:
-            # Google Trends Abfrage
-            pytrends = TrendReq(hl='de-DE', tz=360)
-            pytrends.build_payload(kw_list, cat=0, timeframe=timeframe, geo='DE')
-            df = pytrends.interest_over_time()
+            # Abfrage über die Cache-Funktion!
+            df = fetch_google_trends_data(kw_list, timeframe)
             
             if not df.empty:
                 if 'isPartial' in df.columns:
@@ -189,21 +203,20 @@ if st.sidebar.button("🧩 Ermittlung beginnen"):
                 
                 puzzle_alert("Die historischen Aufzeichnungen wurden erfolgreich gesichert!", "success")
                 
-                # Wir konzentrieren uns auf das erste Keyword für die tiefgehende KI Analyse
                 target_kw = kw_list[0]
                 
                 if target_kw in df.columns:
                     # Daten für Prognose vorbereiten
                     y = df[target_kw].resample('W').mean().fillna(method='ffill')
                     model = ExponentialSmoothing(y, trend='add', seasonal='add', seasonal_periods=4).fit()
-                    forecast = model.forecast(4) # 4 Wochen in die Zukunft
+                    forecast = model.forecast(4) 
                     
-                    # --- METRIKEN BERECHNEN ---
+                    # Metriken berechnen
                     current_val = y.iloc[-1]
                     future_val = forecast.iloc[-1]
                     growth_percent = ((future_val - current_val) / current_val) * 100 if current_val > 0 else 0
                     
-                    # --- PUZZLE METRIKEN ANZEIGEN ---
+                    # Layout Metriken
                     st.markdown("### 🧩 Akten-Übersicht")
                     col1, col2, col3 = st.columns(3)
                     with col1:
@@ -216,7 +229,7 @@ if st.sidebar.button("🧩 Ermittlung beginnen"):
                     st.markdown("---")
                     st.markdown("### 📜 Die Analyse des Rätsels")
                     
-                    # --- TABS FÜR CHARTS ---
+                    # Tabs und Charts
                     tab1, tab2 = st.tabs(["Historische Spuren", "Deduktive Vorhersage"])
                     
                     with tab1:
@@ -234,7 +247,7 @@ if st.sidebar.button("🧩 Ermittlung beginnen"):
                         fig_forecast.update_layout(plot_bgcolor='rgba(0,0,0,0)', paper_bgcolor='rgba(0,0,0,0)')
                         st.plotly_chart(fig_forecast, use_container_width=True)
                     
-                    # --- DER RAT DES PROFESSORS ---
+                    # Ratschlag
                     trend_direction = forecast.iloc[-1] - y.iloc[-1]
                     if trend_direction > 5:
                         advice = f"<b>Ausgezeichnet!</b> Die Zeichen stehen auf Sturm. Das Interesse an '{target_kw}' wird wachsen. Bereite deinen nächsten Content zu diesem Thema vor!"
@@ -249,7 +262,7 @@ if st.sidebar.button("🧩 Ermittlung beginnen"):
                 puzzle_alert("Unsere Bibliothek hat keine ausreichenden Spuren für diese Begriffe gefunden.", "warning")
                 
         except Exception as e:
-            puzzle_alert(f"Ein unerwartetes Hindernis ist aufgetreten! Detail: {e}", "error")
+            puzzle_alert(f"Ein unerwartetes Hindernis ist aufgetreten! (Möglicherweise blockiert Google temporär. Versuche es in einer Stunde noch einmal.) Detail: {e}", "error")
 
 # Footer
 st.sidebar.markdown("---")
