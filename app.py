@@ -17,7 +17,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# ===== 2. LAYTON CSS STYLES (Hoher Kontrast) =====
+# ===== 2. LAYTON CSS STYLES (Mit Fix für die Eingabefelder) =====
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Merriweather:wght@300;400;700&display=swap');
@@ -28,7 +28,7 @@ st.markdown("""
     background-attachment: fixed;
 }
 
-/* Überschriften im Layton-Stil - Hoher Kontrast, kein unscharfer Schatten */
+/* Überschriften im Layton-Stil */
 h1, h2, h3 {
     font-family: 'Cinzel', serif !important;
     color: #1A0F00 !important; 
@@ -42,6 +42,40 @@ p, div, span, li {
     color: #1A0F00;
     line-height: 1.6;
 }
+
+/* ---------------------------------------------------
+   NEU: FIX FÜR DIE EINGABEFELDER (Suchtext & Dropdown) 
+   --------------------------------------------------- */
+
+/* Das Text-Eingabefeld (Hintergrund und Rahmen) */
+div[data-baseweb="input"] > div {
+    background-color: #FFF8F0 !important; /* Helles Pergament */
+    border: 2px solid #D4AF37 !important; /* Goldener Rahmen */
+    border-radius: 6px !important;
+}
+
+/* Der eingegebene Text im Suchfeld (Tinte) */
+div[data-baseweb="input"] input {
+    color: #1A0F00 !important; /* Tiefschwarz/Braun */
+    font-weight: 900 !important; /* Extra dick */
+    font-size: 1.1em !important;
+    -webkit-text-fill-color: #1A0F00 !important; /* Zwingt Browser zur Farbe */
+}
+
+/* Das Dropdown-Feld (Zeitraum) */
+div[data-baseweb="select"] > div {
+    background-color: #FFF8F0 !important;
+    border: 2px solid #D4AF37 !important;
+    border-radius: 6px !important;
+}
+
+/* Der ausgewählte Text im Dropdown */
+div[data-baseweb="select"] span {
+    color: #1A0F00 !important;
+    font-weight: bold !important;
+}
+
+/* --------------------------------------------------- */
 
 /* Karten/Container wie Puzzle-Boxen */
 .stMetric, div[data-testid="stMetric"] {
@@ -75,8 +109,8 @@ section[data-testid="stSidebar"] {
     border-right: 3px solid #D4AF37 !important;
 }
 
-/* Sidebar Text - Weiß für perfekten Kontrast */
-section[data-testid="stSidebar"] * {
+/* Sidebar Labels/Text - Weiß für perfekten Kontrast zum dunklen Holz */
+section[data-testid="stSidebar"] p, section[data-testid="stSidebar"] label {
     color: #FFFFFF !important; 
     font-family: 'Merriweather', serif !important;
     text-shadow: none !important;
@@ -173,7 +207,7 @@ def puzzle_alert(message, type="success"):
     </div>
     """, unsafe_allow_html=True)
 
-# ===== 4. DATENABFRAGE MIT CACHE (Schutz vor Fehler 429) =====
+# ===== 4. DATENABFRAGE MIT CACHE =====
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_google_trends_data(keywords, time_range):
     pytrends = TrendReq(hl='de-DE', tz=360)
@@ -194,7 +228,7 @@ timeframe = st.sidebar.selectbox("Zeitraum der Untersuchung", ["today 3-m", "tod
 if st.sidebar.button("🧩 Ermittlung beginnen"):
     with st.spinner('Wir kochen eine Kanne Tee und werten die Hinweise aus... ☕'):
         try:
-            # Abfrage über die Cache-Funktion!
+            # Abfrage über die Cache-Funktion
             df = fetch_google_trends_data(kw_list, timeframe)
             
             if not df.empty:
@@ -262,7 +296,7 @@ if st.sidebar.button("🧩 Ermittlung beginnen"):
                 puzzle_alert("Unsere Bibliothek hat keine ausreichenden Spuren für diese Begriffe gefunden.", "warning")
                 
         except Exception as e:
-            puzzle_alert(f"Ein unerwartetes Hindernis ist aufgetreten! (Möglicherweise blockiert Google temporär. Versuche es in einer Stunde noch einmal.) Detail: {e}", "error")
+            puzzle_alert(f"Ein unerwartetes Hindernis ist aufgetreten! (Möglicherweise blockiert Google temporär. Versuche es später erneut.) Detail: {e}", "error")
 
 # Footer
 st.sidebar.markdown("---")
