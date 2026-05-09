@@ -77,7 +77,7 @@ def puzzle_alert(message, type="success"):
     b_col, bg_col, icon = colors.get(type)
     st.markdown(f'<div style="background: {bg_col}; border: 2px solid {b_col}; border-radius: 8px; padding: 15px; margin: 10px 0; display: flex; align-items: center; gap: 10px;"><span style="font-size: 1.5em;">{icon}</span><span style="color: #1A0F00; font-weight: bold;">{message}</span></div>', unsafe_allow_html=True)
 
-# ===== 4. ROBUSTE DATENABFRAGE (Mit Fallback!) =====
+# ===== 4. ROBUSTE DATENABFRAGE (Mit sicherem Fallback!) =====
 @st.cache_data(ttl=3600, show_spinner=False)
 def fetch_trends_robust(keywords, time_range):
     try:
@@ -86,19 +86,27 @@ def fetch_trends_robust(keywords, time_range):
         pytrends.build_payload(keywords, cat=0, timeframe=time_range, geo='DE')
         df = pytrends.interest_over_time()
         if not df.empty:
-            if 'isPartial' in df.columns: df = df.drop(columns=['isPartial'])
+            if 'isPartial' in df.columns: 
+                df = df.drop(columns=['isPartial'])
             return df, "Echt"
     except Exception:
         pass
     
     # Versuch 2: Notfall-Simulation (Wenn Google blockiert)
-    # Generiert realistische, algorithmische Daten für die Keywords
-    dates = pd.date_range(end=datetime.today(), periods=52, freq='W')
+    # Kugelsichere Version: Wir zwingen alle Arrays auf exakt die gleiche Länge
+    n_periods = 52
+    # 'W-SUN' ist der modernere Standard für wöchentliche Daten (Sonntag)
+    dates = pd.date_range(end=datetime.today(), periods=n_periods, freq='W-SUN')
     df_sim = pd.DataFrame(index=dates)
+    
     for kw in keywords:
-        base_trend = np.linspace(30, 60, 52) + np.random.normal(0, 5, 52)
-        seasonality = np.sin(np.linspace(0, 4 * np.pi, 52)) * 15
-        df_sim[kw] = np.clip(base_trend + seasonality, 0, 100)
+        base_trend = np.linspace(30, 60, n_periods) + np.random.normal(0, 5, n_periods)
+        seasonality = np.sin(np.linspace(0, 4 * np.pi, n_periods)) * 15
+        
+        # .tolist() entfernt alle NumPy-Formatierungen und zwingt Pandas, 
+        # die Werte einfach der Reihe nach einzufügen.
+        df_sim[kw] = np.clip(base_trend + seasonality, 0, 100).tolist()
+        
     return df_sim, "Simuliert"
 
 # ===== 5. DIE HAUPTANWENDUNG =====
@@ -118,7 +126,7 @@ if st.sidebar.button("🧩 Ermittlung beginnen"):
         if data_source == "Echt":
             puzzle_alert("Die historischen Aufzeichnungen von Google wurden erfolgreich gesichert!", "success")
         else:
-            puzzle_alert("Google verweigert den Zutritt (Fehler 429). Der Professor hat stattdessen den Detektiv-Modus aktiviert und Daten auf Basis von Algorithmen-Mustern simuliert!", "warning")
+            puzzle_alert("Google verweigert den Zutritt. Der Professor hat stattdessen den Detektiv-Modus aktiviert und realistische Daten auf Basis von Algorithmen-Mustern simuliert!", "warning")
             
         target_kw = kw_list[0]
         
@@ -142,7 +150,7 @@ if st.sidebar.button("🧩 Ermittlung beginnen"):
             st.markdown("---")
             st.markdown("### 📜 Die tiefe Analyse des Rätsels")
             
-            # NEU: Drei Tabs für noch mehr Analyse
+            # Drei Tabs für noch mehr Analyse
             tab1, tab2, tab3 = st.tabs(["Spurensuche (Historie)", "Vorhersage", "Tiefe Analyse (Trend vs. Hype)"])
             
             with tab1:
