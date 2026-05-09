@@ -132,8 +132,9 @@ if st.sidebar.button("🧩 Ermittlung beginnen"):
         
         if target_kw in df.columns:
             # Daten glätten und vorhersagen
-            y = df[target_kw].resample('W').mean().fillna(method='ffill')
-            model = ExponentialSmoothing(y, trend='add', seasonal='add', seasonal_periods=4).fit()
+# Wir stellen zusätzlich sicher, dass das Datum korrekt als Zeitachse erkannt wird
+df.index = pd.to_datetime(df.index)
+y = df[target_kw].resample('W').mean().ffill()            model = ExponentialSmoothing(y, trend='add', seasonal='add', seasonal_periods=4).fit()
             forecast = model.forecast(4) 
             
             # Metriken
