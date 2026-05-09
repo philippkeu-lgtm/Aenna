@@ -12,11 +12,73 @@ st.title("👻 Ghost-Tech & Nischen-Radar")
 
 # WICHTIG: Hier sind die dreifachen Anführungszeichen korrekt geschlossen!
 st.markdown("""
-Willkommen im **Data-Dashboard**. 
-Hiermit analysieren wir Suchtrends (Google Trends) für die Nische 'Momlife & Spuk', 
-um vorherzusagen, welche Themen als Nächstes viral gehen könnten.
-""")
-
+# --- ECHTE VORHERSAGE ---
+                st.markdown("---")
+                st.subheader("🔮 KI-Trend-Vorhersage (30 Tage)")
+                
+                try:
+                    # Wir nehmen den ersten Suchbegriff aus der Liste für die Vorhersage
+                    target_kw = kw_list[0]
+                    
+                    if target_kw in df.columns:
+                        # Daten vorbereiten (wöchentliche Frequenz annehmen, um Rauschen zu filtern)
+                        y = df[target_kw].resample('W').mean().fillna(method='ffill')
+                        
+                        # Das Machine-Learning Modell trainieren (Holt-Winters)
+                        # Es sucht nach Trends und saisonalen Mustern
+                        model = ExponentialSmoothing(
+                            y, 
+                            trend='add', 
+                            seasonal='add', 
+                            seasonal_periods=4 # Annahme: Monatliche Muster
+                        ).fit()
+                        
+                        # 4 Wochen (ca. 1 Monat) in die Zukunft vorhersagen
+                        forecast = model.forecast(4)
+                        
+                        # Vorhersage-Datenbank für das Diagramm erstellen
+                        forecast_df = pd.DataFrame({
+                            'Datum': forecast.index,
+                            'Suchinteresse (0-100)': forecast.values,
+                            'Typ': 'Vorhersage'
+                        })
+                        
+                        # Historische Daten für das Diagramm anpassen
+                        history_df = pd.DataFrame({
+                            'Datum': y.index,
+                            'Suchinteresse (0-100)': y.values,
+                            'Typ': 'Vergangenheit'
+                        })
+                        
+                        # Beide Datensätze zusammenfügen
+                        combined_df = pd.concat([history_df, forecast_df])
+                        
+                        # Neues Diagramm mit Vorhersage zeichnen
+                        fig_forecast = px.line(
+                            combined_df, 
+                            x='Datum', 
+                            y='Suchinteresse (0-100)', 
+                            color='Typ',
+                            color_discrete_map={'Vergangenheit': '#1f77b4', 'Vorhersage': '#ff7f0e'},
+                            title=f"Trend-Prognose für '{target_kw}'",
+                            template="plotly_dark"
+                        )
+                        # Die Vorhersage gestrichelt darstellen
+                        fig_forecast.update_traces(patch={"line": {"dash": "dot"}}, selector={"legendgroup": "Vorhersage"})
+                        
+                        st.plotly_chart(fig_forecast, use_container_width=True)
+                        
+                        # Handlungs-Empfehlung generieren
+                        trend_direction = forecast.iloc[-1] - y.iloc[-1]
+                        if trend_direction > 5:
+                            st.success(f"📈 **Algorithmus-Tipp:** Das Interesse an '{target_kw}' wird im nächsten Monat stark steigen! Perfekter Zeitpunkt, um Content vorzuproduzieren.")
+                        elif trend_direction < -5:
+                            st.warning(f"📉 **Algorithmus-Tipp:** Der Trend für '{target_kw}' kühlt gerade ab. Versuche einen anderen Hook oder warte etwas ab.")
+                        else:
+                            st.info(f"➡️ **Algorithmus-Tipp:** Der Trend für '{target_kw}' bleibt stabil. Du kannst in deiner normalen Frequenz weiterposten.")
+                            
+                except Exception as e:
+                    st.error(f"Vorhersage-Modell konnte nicht berechnet werden. (Zu wenig Datenpunkte oder Fehler: {e})")
 # 3. Google Trends Setup
 # hl='de-DE' setzt die Sprache auf Deutsch, tz=360 ist die Zeitzone (Mitteleuropa)
 pytrends = TrendReq(hl='de-DE', tz=360)
